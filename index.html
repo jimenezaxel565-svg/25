@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>React · Render Props | ¿Siguen siendo útiles?</title>
+    
+    <!-- Fuentes e Iconos -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    
+    <!-- Prism.js (tema oscuro + JSX) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    
+    <!-- GSAP Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        :root {
+            --bg-dark: #0a0c10;
+            --card-bg: #0f1117;
+            --react-blue: #61DAFB;
+            --react-light: #8ad4ff;
+            --react-cyan: #b3e4ff;
+            --text-light: #ffffff;
+            --text-muted: #9ca3af;
+            --border-subtle: #2a2f3a;
+            --font-main: 'Outfit', sans-serif;
+            --font-code: 'JetBrains Mono', monospace;
+            --safe-margin: clamp(24px, 8vw, 48px);
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-dark);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            touch-action: pan-y;
+        }
+
+        .cinema-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+
+        .horizontal-track {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            height: 100%;
+            will-change: transform;
+            cursor: grab;
+        }
+        .horizontal-track:active {
+            cursor: grabbing;
+        }
+
+        .slide {
+            flex: 0 0 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 0 var(--safe-margin);
+            position: relative;
+            overflow-y: auto;
+            background-color: var(--card-bg);
+            background-image: 
+                radial-gradient(circle at 70% 80%, rgba(97, 218, 251, 0.08) 0%, rgba(0, 0, 0, 0) 70%),
+                linear-gradient(rgba(97, 218, 251, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(97, 218, 251, 0.03) 1px, transparent 1px);
+            background-size: 100% 100%, 40px 40px, 40px 40px;
+            background-position: 0 0;
+            background-repeat: no-repeat, repeat, repeat;
+            border-right: 1px solid var(--border-subtle);
+            scrollbar-width: thin;
+        }
+        .slide::-webkit-scrollbar {
+            width: 3px;
+            background: transparent;
+        }
+        .slide::-webkit-scrollbar-thumb {
+            background: var(--react-blue);
+            border-radius: 3px;
+        }
+
+        .bg-text {
+            position: absolute;
+            color: rgba(97, 218, 251, 0.03);
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 0;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        .bg-text i {
+            margin-right: 4px;
+        }
+
+        .content-wrapper {
+            width: 100%;
+            max-width: 540px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            position: relative;
+            margin: 20px 0;
+            text-align: left;
+            align-items: flex-start;
+        }
+
+        .label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        h1 {
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--react-blue), var(--react-light), var(--react-cyan));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 20px rgba(97, 218, 251, 0.3);
+        }
+
+        .slide-1 h1 {
+            font-size: clamp(2.8rem, 10vw, 4.8rem);
+            line-height: 1.1;
+        }
+        .slide-2 h1, .slide-3 h1, .slide-4 h1, .slide-5 h1, .slide-6 h1 {
+            font-size: clamp(2rem, 7vw, 3rem);
+            line-height: 1.2;
+        }
+
+        p {
+            line-height: 1.4;
+            color: var(--text-muted);
+        }
+        .slide-1 p {
+            font-size: 1rem;
+        }
+        .slide-2 p, .slide-3 p, .slide-4 p, .slide-5 p, .slide-6 p {
+            font-size: 0.85rem;
+        }
+
+        .badge {
+            background: rgba(97, 218, 251, 0.12);
+            color: var(--react-blue);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            border: 1px solid rgba(97, 218, 251, 0.3);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            width: fit-content;
+            letter-spacing: 0.5px;
+        }
+        .badge i {
+            font-size: 0.7rem;
+        }
+
+        .editor-window {
+            background: #0a0c10;
+            border-radius: 16px;
+            border: 1px solid rgba(97, 218, 251, 0.2);
+            overflow: hidden;
+            width: 100%;
+        }
+        .editor-window pre {
+            margin: 0;
+            padding: 12px;
+            background: transparent;
+            font-size: 0.7rem;
+            line-height: 1.4;
+            overflow-x: auto;
+        }
+        .editor-window code {
+            font-family: var(--font-code);
+            font-size: 0.7rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .react-logo svg {
+            width: 52px;
+            height: 52px;
+            filter: drop-shadow(0 0 8px rgba(97, 218, 251, 0.5));
+        }
+
+        .animate-content {
+            opacity: 0;
+            will-change: transform, opacity, filter;
+        }
+
+        @media (max-width: 480px) {
+            .content-wrapper {
+                gap: 10px;
+                margin: 12px 0;
+                max-width: 100%;
+            }
+            .slide-1 p {
+                font-size: 0.9rem;
+            }
+            .slide-2 p, .slide-3 p, .slide-4 p, .slide-5 p, .slide-6 p {
+                font-size: 0.8rem;
+            }
+            .editor-window pre {
+                padding: 10px;
+                font-size: 0.65rem;
+            }
+            .react-logo svg {
+                width: 42px;
+                height: 42px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="cinema-container">
+    <div class="horizontal-track" id="horizontalTrack">
+        <!-- SLIDE 1: Portada -->
+        <section class="slide slide-1">
+            <div class="bg-text" style="top: 10%; left: 8%;"><i class="fas fa-code-branch"></i> Render Props</div>
+            <div class="bg-text" style="top: 30%; right: 12%;"><i class="fas fa-question-circle"></i> ¿Siguen siendo útiles?</div>
+            <div class="bg-text" style="bottom: 20%; left: 12%;"><i class="fas fa-crown"></i> El rey olvidado</div>
+            
+            <div class="content-wrapper animate-content">
+                <div class="react-logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="-120 -120 240 240" width="64" height="64">
+                        <circle cx="0" cy="0" r="20.5" fill="#61dafb" />
+                        <g fill="none" stroke="#61dafb" stroke-width="15">
+                            <ellipse rx="110" ry="42" />
+                            <ellipse rx="110" ry="42" transform="rotate(60)" />
+                            <ellipse rx="110" ry="42" transform="rotate(120)" />
+                        </g>
+                    </svg>
+                </div>
+                <span class="label">React · Render Props</span>
+                <div class="badge"><i class="fas fa-palette"></i> Patrón clásico</div>
+                <h1>
+                    <span class="outline-text">Render Props</span><br />¿Aún útiles?
+                </h1>
+                <p>Aunque los hooks ganaron la guerra, este patrón sigue siendo el rey para ciertos casos de reutilización visual.</p>
+            </div>
+        </section>
+
+        <!-- SLIDE 2: ¿Qué es una render prop? (concepto mínimo) -->
+        <section class="slide">
+            <div class="bg-text" style="top: 12%; left: 15%;"><i class="fas fa-code"></i> Prop que es una función</div>
+            <div class="bg-text" style="top: 40%; right: 10%;"><i class="fas fa-exchange-alt"></i> Componente que recibe JSX dinámico</div>
+            
+            <div class="content-wrapper">
+                <div class="badge animate-content"><i class="fas fa-lightbulb"></i> Definición</div>
+                <h1 class="animate-content">Una prop que <span class="outline-text">devuelve JSX</span></h1>
+                <div class="editor-window animate-content">
+                    <pre><code class="language-jsx">&lt;Mouse render={(mouse) => (
+  &lt;p&gt;La posición es {mouse.x}, {mouse.y}&lt;/p&gt;
+)} /&gt;</code></pre>
+                </div>
+                <p class="animate-content">El componente <code>Mouse</code> maneja el estado y llama a <code>render</code> con los datos. El consumidor decide qué pintar.</p>
+            </div>
+        </section>
+
+        <!-- SLIDE 3: Ejemplo clásico - Mouse Tracker (render prop) -->
+        <section class="slide">
+            <div class="bg-text" style="top: 15%; left: 10%;"><i class="fas fa-mouse-pointer"></i> Seguimiento del mouse</div>
+            
+            <div class="content-wrapper">
+                <div class="badge animate-content"><i class="fas fa-code"></i> Ejemplo</div>
+                <h1 class="animate-content"><span class="outline-text">MouseTracker</span> con render prop</h1>
+                <div class="editor-window animate-content">
+                    <pre><code class="language-jsx">function Mouse({ render }) {
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  useEffect(() => {
+    const move = (e) => setPosition({ x: e.clientX, y: e.clientY });
+    window.addEventListener('mousemove', move);
+    return () => window.removeEventListener('mousemove', move);
+  }, []);
+  return render(position);
+}
+
+// Uso
+&lt;Mouse render={({ x, y }) => (
+  &lt;div&gt;Mouse: {x}, {y}&lt;/div&gt;
+)} /&gt;</code></pre>
+                </div>
+                <p class="animate-content">El componente solo se preocupa por la lógica, la UI es 100% del consumidor.</p>
+            </div>
+        </section>
+
+        <!-- SLIDE 4: Comparación con hooks (no es guerra, es complemento) -->
+        <section class="slide">
+            <div class="bg-text" style="top: 15%; left: 10%;"><i class="fas fa-balance-scale"></i> Hooks vs Render Props</div>
+            
+            <div class="content-wrapper">
+                <div class="badge animate-content"><i class="fas fa-code-branch"></i> Comparación</div>
+                <h1 class="animate-content">Hooks ganaron, pero <span class="outline-text">no todo</span></h1>
+                <div class="editor-window animate-content">
+                    <pre><code class="language-jsx">// Hook (lógica compartida)
+const mouse = useMouse();
+return &lt;div&gt;{mouse.x}&lt;/div&gt;;
+
+// Render prop (lógica + UI dinámica)
+&lt;Mouse&gt;{(mouse) => &lt;div&gt;{mouse.x}&lt;/div&gt;}&lt;/Mouse&gt;</code></pre>
+                </div>
+                <p class="animate-content">Los hooks son mejores para lógica pura. Las render props ganan cuando la <strong>estructura del JSX</strong> debe decidir el consumidor.</p>
+            </div>
+        </section>
+
+        <!-- SLIDE 5: ¿Cuándo siguen siendo útiles? -->
+        <section class="slide">
+            <div class="bg-text" style="top: 15%; left: 10%;"><i class="fas fa-trophy"></i> Casos de uso</div>
+            
+            <div class="content-wrapper">
+                <div class="badge animate-content"><i class="fas fa-check-circle"></i> Todavía reinan</div>
+                <h1 class="animate-content"><span class="outline-text">Render Props</span> hoy</h1>
+                <p class="animate-content"><i class="fas fa-check-circle"></i> <strong>Animaciones</strong> (React Spring, Framer Motion)</p>
+                <p class="animate-content"><i class="fas fa-check-circle"></i> <strong>Componentes que necesitan control de renderizado</strong> (ej. <code>&lt;Route /&gt;</code> de React Router)</p>
+                <p class="animate-content"><i class="fas fa-check-circle"></i> <strong>Reutilización de lógica + UI</strong> cuando el markup varía mucho</p>
+                <p class="animate-content"><i class="fas fa-check-circle"></i> <strong>Composición visual</strong> sin crear componentes intermedios</p>
+            </div>
+        </section>
+
+        <!-- SLIDE 6: Conclusión y regla simple -->
+        <section class="slide">
+            <div class="bg-text" style="top: 15%; left: 10%;"><i class="fas fa-ruler"></i> Regla práctica</div>
+            
+            <div class="content-wrapper">
+                <div class="badge animate-content"><i class="fas fa-gem"></i> Conclusión</div>
+                <h1 class="animate-content">¿Render prop o <span class="outline-text">hook</span>?</h1>
+                <div class="editor-window animate-content" style="margin-top: 4px;">
+                    <pre><code class="language-text">¿Solo lógica? → Hook.
+¿La UI varía completamente?
+→ Render prop (o children como función).
+
+No están peleados, se complementan.</code></pre>
+                </div>
+                <p class="animate-content"><i class="fab fa-react"></i> <strong>Resumen:</strong> Las render props no murieron. Son ideales cuando necesitas que el consumidor controle la estructura visual mientras tú manejas el estado/efectos.</p>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+    (function() {
+        if (typeof gsap === 'undefined') return;
+
+        const track = document.getElementById('horizontalTrack');
+        const slides = Array.from(document.querySelectorAll('.slide'));
+        const totalSlides = slides.length;
+        let currentIndex = 0;
+        let slideWidth = window.innerWidth;
+        
+        let isDragging = false;
+        let startX = 0;
+        let currentTranslate = 0;
+        let startTransform = 0;
+        
+        const slideAnimated = new Array(totalSlides).fill(false);
+        
+        function updateDimensions() {
+            slideWidth = window.innerWidth;
+            track.style.width = `${totalSlides * slideWidth}px`;
+            const newX = -currentIndex * slideWidth;
+            gsap.set(track, { x: newX });
+            currentTranslate = newX;
+        }
+        
+        function animateSlideContent(index) {
+            if (slideAnimated[index]) return;
+            const slide = slides[index];
+            const elements = slide.querySelectorAll('.animate-content');
+            if (elements.length === 0) return;
+            
+            const effects = [
+                { fromProps: { x: -60, opacity: 0, filter: "blur(6px)" }, toProps: { x: 0, opacity: 1, filter: "blur(0px)" } },
+                { fromProps: { x: 60, opacity: 0, filter: "blur(6px)" }, toProps: { x: 0, opacity: 1, filter: "blur(0px)" } },
+                { fromProps: { y: -50, opacity: 0, filter: "blur(6px)" }, toProps: { y: 0, opacity: 1, filter: "blur(0px)" } },
+                { fromProps: { y: 50, opacity: 0, filter: "blur(6px)" }, toProps: { y: 0, opacity: 1, filter: "blur(0px)" } },
+                { fromProps: { scale: 0.7, opacity: 0, filter: "blur(6px)" }, toProps: { scale: 1, opacity: 1, filter: "blur(0px)" } }
+            ];
+            const effect = effects[Math.floor(Math.random() * effects.length)];
+            
+            gsap.killTweensOf(elements);
+            gsap.set(elements, effect.fromProps);
+            gsap.to(elements, {
+                ...effect.toProps,
+                duration: 0.6,
+                stagger: 0.06,
+                ease: "back.out(0.4)",
+                overwrite: true
+            });
+            slideAnimated[index] = true;
+        }
+        
+        function snapToIndex(index, animate = true) {
+            index = Math.min(Math.max(index, 0), totalSlides - 1);
+            if (index === currentIndex) return;
+            const targetX = -index * slideWidth;
+            currentIndex = index;
+            if (animate) {
+                gsap.to(track, {
+                    x: targetX,
+                    duration: 0.4,
+                    ease: "power2.out",
+                    onUpdate: () => { currentTranslate = targetX; },
+                    onComplete: () => animateSlideContent(currentIndex)
+                });
+            } else {
+                gsap.set(track, { x: targetX });
+                currentTranslate = targetX;
+                animateSlideContent(currentIndex);
+            }
+        }
+        
+        function getNearestIndex() {
+            const currentX = -currentTranslate;
+            const index = Math.round(currentX / slideWidth);
+            return Math.min(Math.max(index, 0), totalSlides - 1);
+        }
+        
+        function onDragStart(e) {
+            e.preventDefault();
+            isDragging = true;
+            startX = e.type === 'mousedown' ? e.clientX : e.touches[0].clientX;
+            startTransform = currentTranslate;
+            track.style.cursor = 'grabbing';
+        }
+        
+        function onDragMove(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            const currentX = e.type === 'mousemove' ? e.clientX : e.touches[0].clientX;
+            const delta = currentX - startX;
+            let newTranslate = startTransform + delta;
+            const maxTranslate = 0;
+            const minTranslate = -(totalSlides - 1) * slideWidth;
+            newTranslate = Math.min(maxTranslate, Math.max(minTranslate, newTranslate));
+            gsap.set(track, { x: newTranslate });
+            currentTranslate = newTranslate;
+        }
+        
+        function onDragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+            track.style.cursor = 'grab';
+            const nearest = getNearestIndex();
+            snapToIndex(nearest, true);
+        }
+        
+        function initDragEvents() {
+            track.addEventListener('mousedown', onDragStart);
+            window.addEventListener('mousemove', onDragMove);
+            window.addEventListener('mouseup', onDragEnd);
+            track.addEventListener('touchstart', onDragStart, { passive: false });
+            window.addEventListener('touchmove', onDragMove, { passive: false });
+            window.addEventListener('touchend', onDragEnd);
+        }
+        
+        let resizeTimeout;
+        function onResize() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                updateDimensions();
+                snapToIndex(currentIndex, false);
+            }, 100);
+        }
+        
+        function init() {
+            updateDimensions();
+            initDragEvents();
+            animateSlideContent(0);
+            if (typeof Prism !== 'undefined') Prism.highlightAll();
+            window.addEventListener('resize', onResize);
+        }
+        
+        window.addEventListener('load', init);
+    })();
+</script>
+</body>
+</html>
